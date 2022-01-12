@@ -7,6 +7,8 @@
 <style>
   body {
     background-color: snow;
+    padding: 0;
+    margin: 0;
   }
   main {
     display: grid;
@@ -26,17 +28,20 @@
   }
   h1 {
     grid-area: 1/1/1/2;
-    background-color: tan;
+    background-color: beige;
     text-align: center;
     padding: 0;
     margin: 0;
   }
-  h2 {
+  footer {
     grid-area: 2/1/2/2;
-    background-color: tan;
+    background-color:tan;
     text-align: center;
-    padding: 0;
+    padding: 10px;
     margin: 0;
+  }
+  a, a:visited {
+    color:rgb(88, 74, 11);
   }
 </style>
 </head>
@@ -44,16 +49,16 @@
 <h1>Jennifer's Homepage</h1> 
 <main>
   <div id="left">
+    <h2>Projects</h2>
+<ul>
+    <li><a href="headfirst">Headfirst</a> </li>
+    <li><a href="lunas_gallery">Luna's Gallery</a></li>
+</ul>
+
   </div>
 <div id="right">
 </div>
 </main>
-
-<h2>Projects</h2>
-<ul>
-    <li><a href="headfirst">Headfirst</a> </li>
-    <li><a href="lunas_gallery">lunas Gallery</a></li>
-</ul>
 
 <footer>
     <a href="http://validator.w3.org/check?uri=https://991831.github.io/website/">
