@@ -47,11 +47,17 @@
 <img src="images/applestore.jpg">
 
 <footer>
-    <a href="http://validator.w3.org/check?uri=https://991831.github.io/website/headfirst/mypod">
-    <strong> HTML </strong> Valid! </a>
-    <a href="http://jigsaw.w3.org/css-validator?uri=https://991831.github.io/website/headfisrt/mypod?profile=css3">
-    <strong> CSS </strong> Valid! </a>
-  </footer>
+    <a id="vLink1"><strong> HTML </strong> Valid! </a> |
+    <a id="vLink2"><strong> CSS </strong> Valid! </a>
+    </footer>
+    <script>
+    var loc = window.location.href;
+    var HTMLvalidatorLinkStr = 'http://validator.w3.org/check?uri=' + loc;
+    var CSSvalidatorLinkStr = 'http://jigsaw.w3.org/css-validator/validator?uri=' +
+                              loc + '?profile=css3';
+    document.getElementById("vLink1").setAttribute("href", HTMLvalidatorLinkStr);
+    document.getElementById("vLink2").setAttribute("href", CSSvalidatorLinkStr);
+    </script>
   
 </body>
 </html>
