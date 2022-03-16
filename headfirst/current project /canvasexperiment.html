@@ -9,12 +9,9 @@ h1, footer {
 }
 canvas {
     border: 1px solid #555;
-    display: block;
+    display: table;
     margin-left: auto;
     margin-right: auto;
-    padding: 0; 
-    width: 100%;
-    position: absolute;
 }
 footer {
     margin-top: 30px;
@@ -22,38 +19,6 @@ footer {
 footer>a, footer>a:visited {
     text-decoration: none;
     color: #555;
-}
-body{
-    background: #000;
-    color: #aaa;
-    font: 100%/20px helvetica, arial, sans-serif;
-}
-p{
-    font-size: 12px;
-    margin: 0 0 5px;
-}
-label{
-    font-size: 12px;
-    font-weight: bold;
-}
-button{
-    display: block;
-    margin: 10px 0 5px
-}
-a{
-    border-bottom: 1px dotted #444;
-    color: #fff;
-    font-size: 12px;
-    text-decoration: none;
-}
-#control-panel{
-    background: rgba(0,0,0,.75);
-    border: 1px solid #333;
-    left: 20px;
-    padding: 10px 15px;
-    position:absolute;
-    top: 20px;
-    z-index: 2;
 }
 </style>
 <script>
@@ -74,142 +39,215 @@ function drawSomething() {
   context.fillRect(10, 10, 100, 100);
 }
 window.onload = init;
-window.requestAnimFrame=function(){return window.requestAnimationFrame||window.webkitRequestAnimationFrame||window.mozRequestAnimationFrame||window.oRequestAnimationFrame||window.msRequestAnimationFrame||function(a){window.setTimeout(a,1E3/60)}}();
 
-document.onselectstart = function() {
-  return false;
+var c = document.getElementById("c");
+var ctx = c.getContext("2d");
+var cH;
+var cW;
+var bgColor = "#FF6138";
+var animations = [];
+var circles = [];
+
+var colorPicker = (function() {
+  var colors = ["#FF6138", "#FFBE53", "#2980B9", "#282741"];
+  var index = 0;
+  function next() {
+    index = index++ < colors.length-1 ? index : 0;
+    return colors[index];
+  }
+  function current() {
+    return colors[index]
+  }
+  return {
+    next: next,
+    current: current
+  }
+})();
+
+function removeAnimation(animation) {
+  var index = animations.indexOf(animation);
+  if (index > -1) animations.splice(index, 1);
+}
+
+function calcPageFillRadius(x, y) {
+  var l = Math.max(x - 0, cW - x);
+  var h = Math.max(y - 0, cH - y);
+  return Math.sqrt(Math.pow(l, 2) + Math.pow(h, 2));
+}
+
+function addClickListeners() {
+  document.addEventListener("touchstart", handleEvent);
+  document.addEventListener("mousedown", handleEvent);
 };
-var c = document.getElementById('c');
-var ctx = c.getContext('2d');
-var dpr = window.devicePixelRatio;
-var cw = window.innerWidth;
-var ch = window.innerHeight;
-c.width = cw * dpr;
-c.height = ch * dpr;
-ctx.scale(dpr, dpr);
-var rand = function(rMi, rMa){return ~~((Math.random()*(rMa-rMi+1))+rMi);}
-ctx.lineCap = 'round';
-var orbs = [];
-var orbCount = 30;
-var radius;
 
-var trailCB = document.getElementById('trail');
-var trail = trailCB.checked;
-var clearer = document.getElementById('clear');
-
-function createOrb(mx,my){
-  var dx = (cw/2) - mx;
-	var dy = (ch/2) - my;
-	var dist = Math.sqrt(dx * dx + dy * dy);
-	var angle = Math.atan2(dy, dx);
-	orbs.push({
-		x: mx,
-		y: my,
-		lastX: mx,
-		lastY: my,
-		hue: 0,
-		colorAngle: 0,
-		angle: angle + Math.PI/2,
-		//size: .5+dist/250,
-		size: rand(1,3)/2,
-		centerX: cw/2,
-		centerY: ch/2,		
-		radius: dist,
-		speed: (rand(5,10)/1000)*(dist/750)+.015,
-		alpha: 1 - Math.abs(dist)/cw,
-		draw: function() {			
-			ctx.strokeStyle = 'hsla('+this.colorAngle+',100%,50%,1)';	
-			ctx.lineWidth = this.size;			
-			ctx.beginPath();
-			ctx.moveTo(this.lastX, this.lastY);
-			ctx.lineTo(this.x, this.y);
-			ctx.stroke();
-		},	
-		update: function(){
-			var mx = this.x;
-			var my = this.y;	
-			this.lastX = this.x;
-			this.lastY = this.y;
-			var x1 = cw/2;
-			var y1 = ch/2;
-			var x2 = mx;
-			var y2 = my;		
-			var rise = y1-y2;
-			var run = x1-x2;
-			var slope = -(rise/run);
-			var radian = Math.atan(slope);
-			var angleH = Math.floor(radian*(180/Math.PI));		
-			if(x2 < x1 && y2 < y1){angleH += 180;}		
-			if(x2 < x1 && y2 > y1){angleH += 180;}		
-			if(x2 > x1 && y2 > y1){angleH += 360;}		
-			if(y2 < y1 && slope =='-Infinity'){angleH = 90;}		
-			if(y2 > y1 && slope =='Infinity'){angleH = 270;}		
-			if(x2 < x1 && slope =='0'){angleH = 180;}
-			if(isNaN(angleH)){angleH = 0;}
-			
-			this.colorAngle = angleH;
-			this.x = this.centerX + Math.sin(this.angle*-1) * this.radius;
-			this.y = this.centerY + Math.cos(this.angle*-1) * this.radius;
-			this.angle += this.speed;
-		
-		}
-	});
+function handleEvent(e) {
+    if (e.touches) { 
+      e.preventDefault();
+      e = e.touches[0];
+    }
+    var currentColor = colorPicker.current();
+    var nextColor = colorPicker.next();
+    var targetR = calcPageFillRadius(e.pageX, e.pageY);
+    var rippleSize = Math.min(200, (cW * .4));
+    var minCoverDuration = 750;
+    
+    var pageFill = new Circle({
+      x: e.pageX,
+      y: e.pageY,
+      r: 0,
+      fill: nextColor
+    });
+    var fillAnimation = anime({
+      targets: pageFill,
+      r: targetR,
+      duration:  Math.max(targetR / 2 , minCoverDuration ),
+      easing: "easeOutQuart",
+      complete: function(){
+        bgColor = pageFill.fill;
+        removeAnimation(fillAnimation);
+      }
+    });
+    
+    var ripple = new Circle({
+      x: e.pageX,
+      y: e.pageY,
+      r: 0,
+      fill: currentColor,
+      stroke: {
+        width: 3,
+        color: currentColor
+      },
+      opacity: 1
+    });
+    var rippleAnimation = anime({
+      targets: ripple,
+      r: rippleSize,
+      opacity: 0,
+      easing: "easeOutExpo",
+      duration: 900,
+      complete: removeAnimation
+    });
+    
+    var particles = [];
+    for (var i=0; i<32; i++) {
+      var particle = new Circle({
+        x: e.pageX,
+        y: e.pageY,
+        fill: currentColor,
+        r: anime.random(24, 48)
+      })
+      particles.push(particle);
+    }
+    var particlesAnimation = anime({
+      targets: particles,
+      x: function(particle){
+        return particle.x + anime.random(rippleSize, -rippleSize);
+      },
+      y: function(particle){
+        return particle.y + anime.random(rippleSize * 1.15, -rippleSize * 1.15);
+      },
+      r: 0,
+      easing: "easeOutExpo",
+      duration: anime.random(1000,1300),
+      complete: removeAnimation
+    });
+    animations.push(fillAnimation, rippleAnimation, particlesAnimation);
 }
 
-function orbGo(e){
-	var mx = e.pageX - c.offsetLeft;
-	var my = e.pageY - c.offsetTop;		
-	createOrb(mx,my);
+function extend(a, b){
+  for(var key in b) {
+    if(b.hasOwnProperty(key)) {
+      a[key] = b[key];
+    }
+  }
+  return a;
 }
 
-function turnOnMove(){
-	c.addEventListener('mousemove', orbGo, false);	
+var Circle = function(opts) {
+  extend(this, opts);
 }
 
-function turnOffMove(){
-	c.removeEventListener('mousemove', orbGo, false);	
+Circle.prototype.draw = function() {
+  ctx.globalAlpha = this.opacity || 1;
+  ctx.beginPath();
+  ctx.arc(this.x, this.y, this.r, 0, 2 * Math.PI, false);
+  if (this.stroke) {
+    ctx.strokeStyle = this.stroke.color;
+    ctx.lineWidth = this.stroke.width;
+    ctx.stroke();
+  }
+  if (this.fill) {
+    ctx.fillStyle = this.fill;
+    ctx.fill();
+  }
+  ctx.closePath();
+  ctx.globalAlpha = 1;
 }
 
-function toggleTrails(){
-	trail = trailCB.checked;
+var animate = anime({
+  duration: Infinity,
+  update: function() {
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, cW, cH);
+    animations.forEach(function(anim) {
+      anim.animatables.forEach(function(animatable) {
+        animatable.target.draw();
+      });
+    });
+  }
+});
+
+var resizeCanvas = function() {
+  cW = window.innerWidth;
+  cH = window.innerHeight;
+  c.width = cW * devicePixelRatio;
+  c.height = cH * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+};
+
+(function init() {
+  resizeCanvas();
+  if (window.CP) {
+    // CodePen's loop detection was causin' problems
+    // and I have no idea why, so...
+    window.CP.PenTimer.MAX_TIME_IN_LOOP_WO_EXIT = 6000; 
+  }
+  window.addEventListener("resize", resizeCanvas);
+  addClickListeners();
+  if (!!window.location.pathname.match(/fullcpgrid/)) {
+    startFauxClicking();
+  }
+  handleInactiveUser();
+})();
+
+function handleInactiveUser() {
+  var inactive = setTimeout(function(){
+    fauxClick(cW/2, cH/2);
+  }, 2000);
+  
+  function clearInactiveTimeout() {
+    clearTimeout(inactive);
+    document.removeEventListener("mousedown", clearInactiveTimeout);
+    document.removeEventListener("touchstart", clearInactiveTimeout);
+  }
+  
+  document.addEventListener("mousedown", clearInactiveTimeout);
+  document.addEventListener("touchstart", clearInactiveTimeout);
 }
 
-function clear(){
- orbs = []; 
+function startFauxClicking() {
+  setTimeout(function(){
+    fauxClick(anime.random( cW * .2, cW * .8), anime.random(cH * .2, cH * .8));
+    startFauxClicking();
+  }, anime.random(200, 900));
 }
 
-c.addEventListener('mousedown', orbGo, false);
-c.addEventListener('mousedown', turnOnMove, false);
-c.addEventListener('mouseup', turnOffMove, false);
-trailCB.addEventListener('change', toggleTrails, false);
-clearer.addEventListener('click', clear, false);
-
-var count = 100;
-while(count--){
-		createOrb(cw/2, ch/2+(count*2));
+function fauxClick(x, y) {
+  var fauxClick = new Event("mousedown");
+  fauxClick.pageX = x;
+  fauxClick.pageY = y;
+  document.dispatchEvent(fauxClick);
 }
-
-var loop = function(){
-  window.requestAnimFrame(loop);
-	if(trail){
-		ctx.fillStyle = 'rgba(0,0,0,.1)';
-		ctx.fillRect(0,0,cw,ch);
-	} else {
-		ctx.clearRect(0,0,cw,ch);
-	}
-	var i = orbs.length;
-	while(i--){	
-		var orb = orbs[i];	
-		var updateCount = 3;
-		while(updateCount--){
-		orb.update();		
-		orb.draw(ctx);
-		}
-		
-	}
-}
-            
-loop();
 </script>
 </head>
 <body>
@@ -218,14 +256,10 @@ loop();
 </header>
 
 <main>
-    <div id="control-panel">
-        <p>Click and drag to make more!</p>
-        <label>Trails: </label>
-        <input type="checkbox" id="trail" name="trail" checked />
-        <button id="clear">Clear</button>
-        <a href="https://codepen.io/jackrugile/pen/aCzHs" target="_blank">View Version 2</a>
-        </div>
-        <canvas id="c"></canvas>
+<canvas id="myCanvas" width="600" height="200">
+Sorry, your old browser doesn't support the canvas element. Time for a new
+browser!
+</canvas>
 
 </main>
 
